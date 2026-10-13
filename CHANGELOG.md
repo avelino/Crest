@@ -11,7 +11,7 @@ and Crest uses [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed
 
-- Choosing 5 or 6 pins per row in Settings fills each row to that count instead of falling back to 4.
+- Choosing 5 or 6 pins per row in Settings fills each row to that count, as far as the sidebar width allows, instead of falling back to 4.
 
 ## [0.8.1] - 2026-10-12
 
