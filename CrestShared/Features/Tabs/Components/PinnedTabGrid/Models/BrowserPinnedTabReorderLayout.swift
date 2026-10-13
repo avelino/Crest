@@ -37,7 +37,11 @@ struct BrowserPinnedTabReorderLayout: Equatable {
         let width =
             availableWidth.isFinite ? min(max(0, availableWidth), 10_000) : BrowserChromeLayout.sidebarIdealWidth
         let fitting = max(1, Int((width + tileSpacing) / (minimumTileWidth + tileSpacing)))
-        return PinnedTabGridLayout.columnCount(for: slots.count, maximumColumns: min(requested, fitting))
+        let capacity = min(requested, fitting)
+        // A chosen count is what the person asked for, so rows fill to it.
+        // Only the automatic layout balances rows, which can land below it.
+        guard preferredColumns == 0 else { return min(max(slots.count, 1), capacity) }
+        return PinnedTabGridLayout.columnCount(for: slots.count, maximumColumns: capacity)
     }
 
     var height: CGFloat {
