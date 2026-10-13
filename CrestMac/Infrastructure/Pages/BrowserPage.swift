@@ -580,7 +580,9 @@ final class BrowserPage: NSObject, BrowserMediaSessionCommandEndpoint {
 
     @discardableResult
     func showWebInspector() -> Bool {
-        enginePage.openInspector()
+        guard enginePage.isInspected else { return enginePage.openInspector() }
+        developerPanel = nil
+        return enginePage.closeInspector()
     }
 
     /// Closes the inspector showing `panel`, or opens one on it. An engine
