@@ -581,8 +581,10 @@ final class BrowserPage: NSObject, BrowserMediaSessionCommandEndpoint {
     @discardableResult
     func showWebInspector() -> Bool {
         guard enginePage.isInspected else { return enginePage.openInspector() }
+        // An inspector the engine refuses to close keeps its panel selected.
+        guard enginePage.closeInspector() else { return false }
         developerPanel = nil
-        return enginePage.closeInspector()
+        return true
     }
 
     /// Closes the inspector showing `panel`, or opens one on it. An engine
