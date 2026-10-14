@@ -235,6 +235,7 @@ struct BrowserPlatformCommandPaletteField: NSViewRepresentable {
         func control(_ control: NSControl, textView: NSTextView, doCommandBy selector: Selector) -> Bool {
             guard !textView.hasMarkedText() else { return false }
             let shifted = NSApp.currentEvent?.modifierFlags.contains(.shift) == true
+            let controlHeld = NSApp.currentEvent?.modifierFlags.contains(.control) == true
             switch selector {
             case #selector(NSResponder.insertTab(_:)):
                 model.pressTab()
@@ -265,10 +266,14 @@ struct BrowserPlatformCommandPaletteField: NSViewRepresentable {
                 refreshSuffix()
                 return true
             case #selector(NSResponder.moveToEndOfParagraph(_:)):
+                // Control-E sends the same selector as Option-Down; it is End.
+                if controlHeld { return model.acceptURLCompletion() }
                 model.moveSection(by: 1)
                 refreshSuffix()
                 return true
             case #selector(NSResponder.moveToBeginningOfParagraph(_:)):
+                // Control-A sends the same selector as Option-Up; it is Home.
+                if controlHeld { return false }
                 model.moveSection(by: -1)
                 refreshSuffix()
                 return true

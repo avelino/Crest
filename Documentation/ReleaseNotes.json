@@ -4077,6 +4077,10 @@
     "find-close-returns-page-focus": {
       "category": "fixed",
       "message": "Closing find in page returns the keyboard to the page, including a page in Peek, so arrow keys and Space scroll right away."
+    },
+    "palette-control-a-e-line-edges": {
+      "category": "fixed",
+      "message": "Control-A and Control-E move to the start and end of the line in the address bar instead of jumping between result sections."
     }
   }
 }
