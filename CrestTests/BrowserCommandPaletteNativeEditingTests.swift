@@ -138,14 +138,76 @@ final class BrowserCommandPaletteNativeEditingTests: XCTestCase {
                 fixture.field, textView: editor, doCommandBy: #selector(NSResponder.moveRight(_:))))
     }
 
-    private func makeEditor() -> (
+    func testControlParagraphCommandsKeepLineEdgesAndOptionMovesSections() async throws {
+        let fixture = makeEditor(tabs: [
+            TabState.Seed(title: "Example", url: URL(string: "https://example.com/path"), placement: .current),
+            TabState.Seed(title: "Docs", url: URL(string: "https://docs.example.com/"), placement: .current),
+            TabState.Seed(
+                title: "Saved note", url: URL(string: "https://notes.example.com/saved"), placement: .saved),
+        ])
+        defer {
+            BrowserPlatformCommandPaletteField.dismantleNSView(fixture.field, coordinator: fixture.coordinator)
+            fixture.window.close()
+        }
+        let editor = try XCTUnwrap(fixture.field.currentEditor() as? NSTextView)
+        fixture.coordinator.controlTextDidBeginEditing(
+            Notification(name: NSControl.textDidBeginEditingNotification, object: fixture.field))
+
+        // Empty query usually yields more than one section (open tabs vs saved).
+        await fixture.model.waitForPendingResults()
+        XCTAssertGreaterThanOrEqual(
+            fixture.model.groups.count, 2, "The fixture needs multiple sections to prove Option moves")
+
+        let startIndex = fixture.model.selectedResultIndex
+        let startRevision = fixture.model.keyboardSelectionRevision
+        fixture.coordinator.stubbedModifierFlags = []
+        XCTAssertTrue(
+            fixture.coordinator.control(
+                fixture.field, textView: editor, doCommandBy: #selector(NSResponder.moveToEndOfParagraph(_:))),
+            "Option-Down without Control must keep moving between sections")
+        XCTAssertEqual(fixture.model.keyboardSelectionRevision, startRevision &+ 1)
+        XCTAssertNotEqual(fixture.model.selectedResultIndex, startIndex)
+
+        let afterDown = fixture.model.selectedResultIndex
+        XCTAssertTrue(
+            fixture.coordinator.control(
+                fixture.field, textView: editor, doCommandBy: #selector(NSResponder.moveToBeginningOfParagraph(_:))),
+            "Option-Up without Control must keep moving between sections")
+        XCTAssertNotEqual(fixture.model.selectedResultIndex, afterDown)
+
+        // Control-A is Home: leave the selector to AppKit.
+        fixture.coordinator.stubbedModifierFlags = .control
+        XCTAssertFalse(
+            fixture.coordinator.control(
+                fixture.field, textView: editor, doCommandBy: #selector(NSResponder.moveToBeginningOfParagraph(_:))),
+            "Control-A must not jump sections")
+
+        editor.insertText("exa", replacementRange: NSRange(location: 0, length: editor.string.utf16.count))
+        fixture.coordinator.editingChanged()
+        await fixture.model.waitForPendingResults()
+        XCTAssertNotNil(fixture.model.urlCompletion)
+
+        // Control-E is End: accept a visible completion, same as End / Right.
+        fixture.coordinator.stubbedModifierFlags = .control
+        XCTAssertTrue(
+            fixture.coordinator.control(
+                fixture.field, textView: editor, doCommandBy: #selector(NSResponder.moveToEndOfParagraph(_:))))
+        XCTAssertEqual(editor.string, "example.com")
+        XCTAssertNil(fixture.model.urlCompletion)
+    }
+
+    private func makeEditor(
+        tabs: [TabState.Seed] = [
+            TabState.Seed(title: "Example", url: URL(string: "https://example.com/path"), placement: .current)
+        ]
+    ) -> (
         window: NSWindow, field: NSTextField, coordinator: BrowserPlatformCommandPaletteField.Coordinator,
         model: BrowserCommandPaletteModel
     ) {
-        let tab = TabState.Seed(title: "Example", url: URL(string: "https://example.com/path"), placement: .current)
+        let tab = tabs[0]
         let space = SpaceState.Seed(
             name: "Test", symbol: "globe", accent: .indigo, folders: [],
-            tabs: [tab])
+            tabs: tabs)
         let browser = BrowserStore(
             seed: SessionState.Seed(spaces: [space]), showing: space.id, tabs: [space.id: tab.id])
         let model = BrowserCommandPaletteModel(

@@ -87,6 +87,8 @@ struct BrowserPlatformCommandPaletteField: NSViewRepresentable {
         let suffixLabel = CompletionLabel(
             rootView: BrowserURLCompletionSuffix(text: "", font: .title2, isVisible: false))
         var didRequestFocus = false
+        /// When set, replaces `NSApp.currentEvent` modifiers for doCommandBy tests.
+        var stubbedModifierFlags: NSEvent.ModifierFlags?
         /// Watches the modifier keys and modified Returns while the field edits.
         private var keyMonitor: Any?
 
@@ -234,8 +236,9 @@ struct BrowserPlatformCommandPaletteField: NSViewRepresentable {
 
         func control(_ control: NSControl, textView: NSTextView, doCommandBy selector: Selector) -> Bool {
             guard !textView.hasMarkedText() else { return false }
-            let shifted = NSApp.currentEvent?.modifierFlags.contains(.shift) == true
-            let controlHeld = NSApp.currentEvent?.modifierFlags.contains(.control) == true
+            let flags = stubbedModifierFlags ?? NSApp.currentEvent?.modifierFlags ?? []
+            let shifted = flags.contains(.shift)
+            let controlHeld = flags.contains(.control)
             switch selector {
             case #selector(NSResponder.insertTab(_:)):
                 model.pressTab()
