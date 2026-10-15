@@ -25,6 +25,7 @@ struct BrowserAddressContent: View {
         }
         .frame(maxWidth: .infinity)
         .onChange(of: isFocused, initial: true) { _, focused in
+            if focused { selectAllOnceFocused() }
             guard isEditing != focused else { return }
             isEditing = focused
         }
@@ -131,6 +132,15 @@ struct BrowserAddressContent: View {
         Task { @MainActor in
             await Task.yield()
             isFocused = true
+            selectAll()
+        }
+    }
+
+    /// UIKit moves the caret to the end when the field takes focus, so the
+    /// selection has to land after that.
+    private func selectAllOnceFocused() {
+        Task { @MainActor in
+            await Task.yield()
             selectAll()
         }
     }
