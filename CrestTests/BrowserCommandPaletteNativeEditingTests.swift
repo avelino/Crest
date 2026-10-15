@@ -138,6 +138,8 @@ final class BrowserCommandPaletteNativeEditingTests: XCTestCase {
                 fixture.field, textView: editor, doCommandBy: #selector(NSResponder.moveRight(_:))))
     }
 
+    /// Control-A and Control-E send Option-Up's and Option-Down's commands.
+    /// Only Option moves between result sections; Control keeps the line edges.
     func testControlParagraphCommandsKeepLineEdgesAndOptionMovesSections() async throws {
         let fixture = makeEditor(tabs: [
             TabState.Seed(title: "Example", url: URL(string: "https://example.com/path"), placement: .current),
@@ -152,48 +154,33 @@ final class BrowserCommandPaletteNativeEditingTests: XCTestCase {
         let editor = try XCTUnwrap(fixture.field.currentEditor() as? NSTextView)
         fixture.coordinator.controlTextDidBeginEditing(
             Notification(name: NSControl.textDidBeginEditingNotification, object: fixture.field))
-
-        // Empty query usually yields more than one section (open tabs vs saved).
-        await fixture.model.waitForPendingResults()
-        XCTAssertGreaterThanOrEqual(
-            fixture.model.groups.count, 2, "The fixture needs multiple sections to prove Option moves")
-
-        let startIndex = fixture.model.selectedResultIndex
-        let startRevision = fixture.model.keyboardSelectionRevision
-        fixture.coordinator.stubbedModifierFlags = []
-        XCTAssertTrue(
-            fixture.coordinator.control(
-                fixture.field, textView: editor, doCommandBy: #selector(NSResponder.moveToEndOfParagraph(_:))),
-            "Option-Down without Control must keep moving between sections")
-        XCTAssertEqual(fixture.model.keyboardSelectionRevision, startRevision &+ 1)
-        XCTAssertNotEqual(fixture.model.selectedResultIndex, startIndex)
-
-        let afterDown = fixture.model.selectedResultIndex
-        XCTAssertTrue(
-            fixture.coordinator.control(
-                fixture.field, textView: editor, doCommandBy: #selector(NSResponder.moveToBeginningOfParagraph(_:))),
-            "Option-Up without Control must keep moving between sections")
-        XCTAssertNotEqual(fixture.model.selectedResultIndex, afterDown)
-
-        // Control-A is Home: leave the selector to AppKit.
-        fixture.coordinator.stubbedModifierFlags = .control
-        XCTAssertFalse(
-            fixture.coordinator.control(
-                fixture.field, textView: editor, doCommandBy: #selector(NSResponder.moveToBeginningOfParagraph(_:))),
-            "Control-A must not jump sections")
-
-        editor.insertText("exa", replacementRange: NSRange(location: 0, length: editor.string.utf16.count))
+        editor.insertText("exa", replacementRange: NSRange(location: 0, length: 0))
         fixture.coordinator.editingChanged()
         await fixture.model.waitForPendingResults()
         XCTAssertNotNil(fixture.model.urlCompletion)
-
-        // Control-E is End: accept a visible completion, same as End / Right.
-        fixture.coordinator.stubbedModifierFlags = .control
         XCTAssertTrue(
-            fixture.coordinator.control(
-                fixture.field, textView: editor, doCommandBy: #selector(NSResponder.moveToEndOfParagraph(_:))))
+            fixture.coordinator.perform(
+                #selector(NSResponder.moveToEndOfParagraph(_:)), in: editor, modifiers: .control))
         XCTAssertEqual(editor.string, "example.com")
         XCTAssertNil(fixture.model.urlCompletion)
+
+        editor.insertText("docs", replacementRange: NSRange(location: 0, length: editor.string.utf16.count))
+        fixture.coordinator.editingChanged()
+        await fixture.model.waitForPendingResults()
+        XCTAssertGreaterThanOrEqual(fixture.model.groups.count, 2)
+        let start = fixture.model.selectedResultIndex
+        XCTAssertTrue(
+            fixture.coordinator.perform(
+                #selector(NSResponder.moveToEndOfParagraph(_:)), in: editor, modifiers: .option))
+        XCTAssertNotEqual(fixture.model.selectedResultIndex, start)
+        XCTAssertTrue(
+            fixture.coordinator.perform(
+                #selector(NSResponder.moveToBeginningOfParagraph(_:)), in: editor, modifiers: .option))
+        XCTAssertEqual(fixture.model.selectedResultIndex, start)
+        XCTAssertFalse(
+            fixture.coordinator.perform(
+                #selector(NSResponder.moveToBeginningOfParagraph(_:)), in: editor, modifiers: .control))
+        XCTAssertEqual(fixture.model.selectedResultIndex, start)
     }
 
     private func makeEditor(

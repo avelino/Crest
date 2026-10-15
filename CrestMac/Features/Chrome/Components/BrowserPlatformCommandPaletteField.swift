@@ -87,8 +87,6 @@ struct BrowserPlatformCommandPaletteField: NSViewRepresentable {
         let suffixLabel = CompletionLabel(
             rootView: BrowserURLCompletionSuffix(text: "", font: .title2, isVisible: false))
         var didRequestFocus = false
-        /// When set, replaces `NSApp.currentEvent` modifiers for doCommandBy tests.
-        var stubbedModifierFlags: NSEvent.ModifierFlags?
         /// Watches the modifier keys and modified Returns while the field edits.
         private var keyMonitor: Any?
 
@@ -235,10 +233,17 @@ struct BrowserPlatformCommandPaletteField: NSViewRepresentable {
         }
 
         func control(_ control: NSControl, textView: NSTextView, doCommandBy selector: Selector) -> Bool {
+            perform(selector, in: textView, modifiers: NSApp.currentEvent?.modifierFlags ?? [])
+        }
+
+        /// Runs the palette's part of an editing command the field received
+        /// with `modifiers` held, or answers false to leave it to AppKit.
+        /// Control-A and Control-E send the same commands as Option-Up and
+        /// Option-Down, so only the modifiers tell them apart.
+        func perform(_ selector: Selector, in textView: NSTextView, modifiers: NSEvent.ModifierFlags) -> Bool {
             guard !textView.hasMarkedText() else { return false }
-            let flags = stubbedModifierFlags ?? NSApp.currentEvent?.modifierFlags ?? []
-            let shifted = flags.contains(.shift)
-            let controlHeld = flags.contains(.control)
+            let shifted = modifiers.contains(.shift)
+            let controlHeld = modifiers.contains(.control)
             switch selector {
             case #selector(NSResponder.insertTab(_:)):
                 model.pressTab()
@@ -269,13 +274,14 @@ struct BrowserPlatformCommandPaletteField: NSViewRepresentable {
                 refreshSuffix()
                 return true
             case #selector(NSResponder.moveToEndOfParagraph(_:)):
-                // Control-E sends the same selector as Option-Down; it is End.
+                // Control-E is the line end: it accepts a completion as Right
+                // Arrow does, or AppKit moves there.
                 if controlHeld { return model.acceptURLCompletion() }
                 model.moveSection(by: 1)
                 refreshSuffix()
                 return true
             case #selector(NSResponder.moveToBeginningOfParagraph(_:)):
-                // Control-A sends the same selector as Option-Up; it is Home.
+                // Control-A is the line start, which AppKit moves to.
                 if controlHeld { return false }
                 model.moveSection(by: -1)
                 refreshSuffix()
