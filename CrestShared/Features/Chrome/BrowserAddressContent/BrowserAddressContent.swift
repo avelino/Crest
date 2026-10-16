@@ -1,6 +1,8 @@
 import SwiftUI
 
 struct BrowserAddressContent: View {
+    // MARK: - Variables
+
     @Binding var text: String
     @Binding var isEditing: Bool
     var focusRequest = 0
@@ -97,6 +99,8 @@ struct BrowserAddressContent: View {
         .accessibilityIdentifier(summaryAccessibilityIdentifier)
     }
 
+    // MARK: - Actions - Address summary
+
     private func addressSummaryButton(
         _ presentation: BrowserAddressPresentation
     ) -> some View {
@@ -127,6 +131,8 @@ struct BrowserAddressContent: View {
             .contentShape(.rect)
         }
     }
+
+    // MARK: - Actions - Selection
 
     private func focusAndSelectAll() {
         Task { @MainActor in
