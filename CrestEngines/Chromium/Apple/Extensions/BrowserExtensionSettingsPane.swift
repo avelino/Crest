@@ -21,7 +21,13 @@ struct BrowserExtensionSettingsPane: View {
                 }
             }
             if let space, !spaceAccess.isLocked(space) {
-                BrowserExtensionsView(space: space, store: store).id(space.profileID)
+                BrowserExtensionsView(
+                    space: space, store: store,
+                    // A locked or still-loading Space has no list yet, so "all" would miss it.
+                    everySpaceKnown: browser.spaceModels.allSatisfy {
+                        $0.id == space.id || store.installed[$0.profileID] != nil
+                    }
+                ).id(space.profileID)
             } else if let space {
                 BrowserSettingsPrivateSpaceAccessSection(
                     space: space, accessController: spaceAccess,
@@ -40,6 +46,9 @@ struct BrowserExtensionSettingsPane: View {
 struct BrowserExtensionsView: View {
     let space: BrowserSpaceIdentity
     let store: ChromiumExtensionStore
+    /// Whether every other Space's extension list is loaded, so the Spaces
+    /// holding an extension are all of them.
+    let everySpaceKnown: Bool
     @State private var failure: String?
     @State private var pendingRemoval: ChromiumExtensionStore.Installed?
     @State private var pendingCopy: ChromiumExtensionStore.Installed?
@@ -85,7 +94,7 @@ struct BrowserExtensionsView: View {
                 run(.remove, item.id)
                 pendingRemoval = nil
             }
-            if !store.spaces(holding: item.id, besides: space).isEmpty {
+            if holdsElsewhere(item) {
                 Button("Remove from All Spaces", role: .destructive) {
                     run(.remove, item.id, everywhere: true)
                     pendingRemoval = nil
@@ -93,7 +102,10 @@ struct BrowserExtensionsView: View {
             }
             Button("Cancel", role: .cancel) { pendingRemoval = nil }
         } message: { item in
-            Text("\(item.name) and its data are removed from this Space only.")
+            Text(
+                holdsElsewhere(item)
+                    ? "\(item.name) and its data are removed from this Space only. Remove from All Spaces deletes them from every Space that has it."
+                    : "\(item.name) and its data are removed from this Space only.")
         }
         .sheet(item: $pendingCopy) { item in BrowserExtensionCopySheet(item: item, space: space, store: store) }
     }
@@ -110,11 +122,14 @@ struct BrowserExtensionsView: View {
                         item: item, setEnabled: { run($0 ? .enable : .disable, item.id) },
                         options: { run(.options, item.id) }, manage: { run(.details, item.id) },
                         remove: { pendingRemoval = item }, copy: { pendingCopy = item },
-                        setEnabledEverywhere: store.spaces(holding: item.id, besides: space).isEmpty
-                            ? nil : { run($0 ? .enable : .disable, item.id, everywhere: true) })
+                        setEnabledEverywhere: holdsElsewhere(item)
+                            ? { run($0 ? .enable : .disable, item.id, everywhere: true) } : nil)
                 }
             }
         }
+    }
+    private func holdsElsewhere(_ item: ChromiumExtensionStore.Installed) -> Bool {
+        everySpaceKnown && !store.spaces(holding: item.id, besides: space).isEmpty
     }
     private func run(_ command: ExtensionCommand, _ id: String = "", everywhere: Bool = false) {
         let done =
