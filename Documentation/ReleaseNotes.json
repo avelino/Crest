@@ -4130,6 +4130,98 @@
       "category": "fixed",
       "message": "Back, Reload, Find, Zoom, Copy Page Link, Print and the other page commands work in a Quick Window."
     },
+    "peek-close-returns-keyboard": {
+      "category": "fixed",
+      "message": "Closing a Peek gives the keyboard back to the page underneath, so the arrow keys and Space scroll it again without a click."
+    },
+    "quick-window-page-tools": {
+      "category": "fixed",
+      "message": "Translate, Reader, content blocking, the Web Inspector and moving a page to the other engine now work on a Quick Window’s page."
+    },
+    "space-switch-wraps-around": {
+      "category": "fixed",
+      "message": "Next Space and Previous Space slide around from the last Space to the first, and back, instead of jumping."
+    },
+    "space-slide-survives-sidebar-toggle": {
+      "category": "fixed",
+      "message": "A Space switch keeps sliding when you show or hide the sidebar during it, instead of jumping to the end."
+    },
+    "settings-controls-take-clicks-on-macos-26": {
+      "category": "fixed",
+      "message": "On macOS 26, switches, pickers and the house choices in Settings take every click instead of ignoring clicks after the first."
+    },
+    "update-restart-quits-crest": {
+      "category": "fixed",
+      "message": "Restart and Update quits Crest and installs the update instead of waiting until you quit, and Quit in the Dock works again, even after another app has used AppleScript with Crest."
+    },
+    "quit-after-space-deletion-fails": {
+      "category": "fixed",
+      "message": "Crest quits instead of waiting indefinitely when a Space couldn’t be fully deleted, and tries deleting that Space again the next time it opens."
+    },
+    "chromium-upstream-155-0-8059-39-1-1-6271503014ef": {
+      "category": "fixed",
+      "message": "Chromium is updated to 155.0.8059.39 with upstream security and compatibility fixes."
+    },
+    "http-dead-link-crash": {
+      "category": "fixed",
+      "message": "Opening an http:// address that can’t be reached shows Crest’s error page instead of closing Crest."
+    },
+    "link-route-exact-site-name": {
+      "category": "fixed",
+      "message": "A link route set to “Is Exactly” with just a site’s name, such as docs.google.com, now matches that site’s home page, and Links settings say that routes apply to links from other apps."
+    },
+    "link-route-address-field-editable": {
+      "category": "fixed",
+      "message": "A link route’s address field takes clicks and typing, with “example.com” shown as a hint inside it instead of a fixed label beside it."
+    },
+    "settings-narrow-window-sidebar-clicks": {
+      "category": "fixed",
+      "message": "In a narrow window, a Space’s Crest Studio no longer covers the Settings sidebar, so its search field and Space buttons take clicks again."
+    },
+    "local-addresses-open-over-http": {
+      "category": "fixed",
+      "message": "Typing a local address such as 192.168.0.1 or printer.local opens it over http, as other browsers do, and an address typed with http:// always opens over http."
+    },
+    "tab-title-after-failed-load": {
+      "category": "fixed",
+      "message": "When a page can’t be opened, its tab in the sidebar shows the site it tried to open instead of the previous page’s title."
+    },
+    "core-owned-tab-history": {
+      "category": "internal",
+      "message": "The core keeps each page's back and forward history, with an identity per entry that engines report and traverse by."
+    },
+    "core-history-load-identity-on-failure": {
+      "category": "internal",
+      "message": "A page the core asks to load in place of a history entry gives up that entry's identity when the load fails or is cancelled, so a later page never takes it."
+    },
+    "history-across-engine-moves": {
+      "category": "fixed",
+      "message": "Back and Forward keep working after a page opens in another engine, and take each page back to the engine it was shown in."
+    },
+    "history-refused-step-keeps-site-engine": {
+      "category": "internal",
+      "message": "A step through history the engine refuses no longer keeps a later visit to that address on the same engine instead of the one chosen for the site."
+    },
+    "history-across-engines-after-relaunch": {
+      "category": "improved",
+      "message": "Tabs keep their back and forward history across engines after Crest relaunches, and a duplicated tab keeps it too."
+    },
+    "history-kept-before-engine-state": {
+      "category": "internal",
+      "message": "A tab keeps its history across engines after a relaunch or when duplicated even before its page has any engine state to keep, and a long history no longer loses a run the page left on its oldest entry."
+    },
+    "chromium-form-submit-autofill-save-crash": {
+      "category": "fixed",
+      "message": "Crest no longer quits when you submit a form containing a payment card or address."
+    },
+    "setup-full-screen-look-choice": {
+      "category": "new",
+      "message": "Setup on the Mac fills the screen and asks whether your Spaces wear Crest's heraldic banners and crests or a modern gradient and icon, then carries that look through importing, reviewing and making your Spaces yours."
+    },
+    "setup-import-read-cancel": {
+      "category": "fixed",
+      "message": "While setup reads a browser you chose to import, the page says so where Continue was and offers Cancel, so a slow or stuck read no longer leaves setup looking stuck with every button disabled."
+    },
     "address-bar-selects-url-on-tap": {
       "category": "fixed",
       "message": "Tapping the address bar on iPhone selects the whole address, so typing replaces it or you can copy it right away."

@@ -431,6 +431,7 @@ enum EngineCommand: Equatable, Sendable {
     case eraseProfileData(EraseProfileData)
     case eraseSiteData(EraseSiteData)
     case exitPictureInPicture(ExitPictureInPicture)
+    case goToHistoryEntry(GoToHistoryEntry)
     case groupPages(GroupPages)
     case loadPage(LoadPage)
     case pauseEngineDownload(PauseEngineDownload)
@@ -462,7 +463,6 @@ enum EnginePresentation: Equatable, Sendable {
     case mediaSessionChanged(MediaSessionChanged)
     case pageCaptured(PageCaptured)
     case pageExported(PageExported)
-    case pageHistoryChanged(PageHistoryChanged)
     case pageInputDelivered(PageInputDelivered)
     case pageInteracted(PageInteracted)
     case pageLoadingChanged(PageLoadingChanged)
@@ -508,7 +508,6 @@ enum EnginePresentation: Equatable, Sendable {
         case .mediaSessionChanged(let value): value.pageID
         case .pageCaptured(let value): value.pageID
         case .pageExported(let value): value.pageID
-        case .pageHistoryChanged(let value): value.pageID
         case .pageInputDelivered(let value): value.pageID
         case .pageInteracted(let value): value.pageID
         case .pageLoadingChanged(let value): value.pageID
@@ -1137,6 +1136,12 @@ struct ArchiveTransientPage: Intent, SessionIntent, Equatable, Sendable {
     let spaceID: UUID
 }
 
+struct ArchivedPageHistory: Query, Equatable, Sendable {
+    typealias Answer = PageHistoryArchive
+
+    let pageID: UUID
+}
+
 struct ArchivedTabState: Equatable, Sendable {
     let tab: TabState
     let archivedAt: Date
@@ -1500,6 +1505,10 @@ struct ChoosePeekModifier: Intent, LinkIntent, Equatable, Sendable {
 
 struct ChooseQuickWindowArchivePolicy: Intent, LinkIntent, Equatable, Sendable {
     let policy: QuickWindowArchivePolicy
+}
+
+struct ChooseSetupLook: Intent, SetupFlowIntent, Equatable, Sendable {
+    let look: SetupLook
 }
 
 struct ChooseShareSource: PageRequest, Equatable, Sendable {
@@ -2917,11 +2926,9 @@ struct GetEnginePreferences: Query, Equatable, Sendable {
 
 }
 
-struct GoToHistoryOffset: PageRequest, Equatable, Sendable {
-    typealias Answer = Bool
-
+struct GoToHistoryEntry: Equatable, Sendable {
     let pageID: UUID
-    let offset: Int
+    let entryID: UUID
 }
 
 struct GroupPages: Equatable, Sendable {
@@ -3609,6 +3616,7 @@ struct LoadAddress: Intent, PageIntent, Equatable, Sendable {
 struct LoadPage: Equatable, Sendable {
     let pageID: UUID
     let url: String
+    let entryID: UUID?
 }
 
 struct LocalDocumentFacts: Equatable, Sendable {
@@ -4193,15 +4201,31 @@ struct PageHeader: Equatable, Sendable {
     let value: String
 }
 
-struct PageHistoryChanged: Equatable, Sendable {
+struct PageHistoryArchive: Equatable, Sendable {
+    let archive: Data?
+}
+
+struct PageHistoryEntries: Query, Equatable, Sendable {
+    typealias Answer = PageHistoryList
+
     let pageID: UUID
+}
+
+struct PageHistoryEntry: Equatable, Sendable, Identifiable {
+    var id: UUID
+    var url: String
+    var title: String
+}
+
+struct PageHistoryList: Equatable, Sendable {
     let back: [PageHistoryEntry]
     let forward: [PageHistoryEntry]
 }
 
-struct PageHistoryEntry: Equatable, Sendable {
-    let url: String
-    let title: String
+struct PageHistoryReported: EngineEvent, PageEvent, Equatable, Sendable {
+    let pageID: UUID
+    let entries: [PageHistoryEntry]
+    let current: Int
 }
 
 struct PageIcon: PageRequest, Equatable, Sendable {
@@ -4385,23 +4409,12 @@ struct PageScriptEvaluated: Equatable, Sendable {
 }
 
 struct PageSnapshot: Equatable, Sendable {
-    static let blank = PageSnapshot(
-        url: nil,
-        pendingURL: nil,
-        title: "",
-        isLoading: false,
-        canGoBack: false,
-        canGoForward: false,
-        security: PageSecurity.none,
-        media: []
-    )
+    static let blank = PageSnapshot(url: nil, pendingURL: nil, title: "", isLoading: false, security: PageSecurity.none, media: [])
 
     var url: String?
     var pendingURL: String?
     var title: String
     var isLoading: Bool
-    var canGoBack: Bool
-    var canGoForward: Bool
     var security: PageSecurity
     var media: PageMediaActivity
 }
@@ -5108,6 +5121,13 @@ struct RestoreSearchCatalog: Intent, SearchCatalogIntent, Equatable, Sendable {
     let region: String?
 }
 
+struct RestoreTabHistory: Intent, PageIntent, Equatable, Sendable {
+    let workspaceID: UUID
+    let spaceID: UUID
+    let tabID: UUID
+    let archive: Data
+}
+
 struct ResumeDownload: Intent, DownloadIntent, Equatable, Sendable {
     let downloadID: UUID
 }
@@ -5697,6 +5717,7 @@ struct SetupFlowState: Equatable, Sendable {
     let summary: SetupSummary?
     let opensGuide: Bool
     let opensCrestFromWelcome: Bool
+    let look: SetupLook
 }
 
 struct SetupImportQueue: Equatable, Sendable {
@@ -5805,6 +5826,11 @@ struct ShowBlockedPopups: PageRequest, Equatable, Sendable {
     typealias Answer = Bool
 
     let pageID: UUID
+}
+
+struct ShowHistoryEntry: Intent, PageIntent, Equatable, Sendable {
+    let pageID: UUID
+    let entryID: UUID
 }
 
 struct ShowImportSpace: Intent, SetupFlowIntent, Equatable, Sendable {
@@ -6360,6 +6386,11 @@ struct StartPageNotCopied: Equatable, Sendable {
 struct StartSetup: Intent, SetupFlowIntent, Equatable, Sendable {
     let workspaceID: UUID
     let entry: SetupEntry
+}
+
+struct StepHistory: Intent, PageIntent, Equatable, Sendable {
+    let pageID: UUID
+    let offset: Int
 }
 
 struct StepSplitMember: Intent, SessionIntent, Equatable, Sendable {
@@ -16918,6 +16949,60 @@ struct SetupFailureReason: Hashable, Sendable {
     }
 }
 
+/// The members of the core's `SetupLook`. A member's wire tag is its index in `all`.
+/// Core-only behavior, not emitted: `newSpaceLook`, `applying`.
+struct SetupLook: Hashable, Sendable {
+    enum Kinds: Sendable {
+        case heraldic
+        case modern
+    }
+
+    let tag: Int
+    var kind: Kinds { facts.kind }
+    var name: String { facts.name }
+    var title: LocalizedStringResource { facts.title }
+    private let facts: Facts
+
+    private init(tag: Int, kind: Kinds, name: String, title: LocalizedStringResource) {
+        self.tag = tag
+        facts = Facts(kind: kind, name: name, title: title)
+    }
+
+    static let heraldic = SetupLook(
+        tag: 0,
+        kind: .heraldic,
+        name: "heraldic",
+        title: LocalizedStringResource("Heraldic")
+    )
+    static let modern = SetupLook(tag: 1, kind: .modern, name: "modern", title: LocalizedStringResource("Modern"))
+
+    static let all: [SetupLook] = [heraldic, modern]
+
+    static func named(_ name: String?) -> SetupLook? {
+        all.first { $0.name == name }
+    }
+
+    static func == (lhs: SetupLook, rhs: SetupLook) -> Bool {
+        lhs.tag == rhs.tag
+    }
+
+    func hash(into hasher: inout Hasher) {
+        hasher.combine(tag)
+    }
+
+    private final class Facts: Sendable {
+        let kind: Kinds
+        let name: String
+        let title: LocalizedStringResource
+
+        init(kind: Kinds, name: String, title: LocalizedStringResource) {
+            self.kind = kind
+            self.name = name
+            self.title = title
+        }
+    }
+}
+
 /// The members of the core's `SetupPhase`. A member's wire tag is its index in `all`.
 struct SetupPhase: Hashable, Sendable {
     let tag: Int
@@ -16972,7 +17057,10 @@ struct SetupStep: Hashable, Sendable {
         case review
         case manualSetup
         case complete
+        case look
     }
+
+    static let progressCount = 6
 
     let tag: Int
     var kind: Kinds { facts.kind }
@@ -16989,10 +17077,11 @@ struct SetupStep: Hashable, Sendable {
     static let featureSpaces = SetupStep(tag: 1, kind: .featureSpaces, name: "featureSpaces", progressPosition: 0)
     static let featureTabs = SetupStep(tag: 2, kind: .featureTabs, name: "featureTabs", progressPosition: 0)
     static let featureSync = SetupStep(tag: 3, kind: .featureSync, name: "featureSync", progressPosition: 0)
-    static let importBrowser = SetupStep(tag: 4, kind: .importBrowser, name: "importBrowser", progressPosition: 1)
-    static let review = SetupStep(tag: 5, kind: .review, name: "review", progressPosition: 2)
-    static let manualSetup = SetupStep(tag: 6, kind: .manualSetup, name: "manualSetup", progressPosition: 2)
-    static let complete = SetupStep(tag: 7, kind: .complete, name: "complete", progressPosition: 2)
+    static let importBrowser = SetupStep(tag: 4, kind: .importBrowser, name: "importBrowser", progressPosition: 2)
+    static let review = SetupStep(tag: 5, kind: .review, name: "review", progressPosition: 3)
+    static let manualSetup = SetupStep(tag: 6, kind: .manualSetup, name: "manualSetup", progressPosition: 4)
+    static let complete = SetupStep(tag: 7, kind: .complete, name: "complete", progressPosition: 5)
+    static let look = SetupStep(tag: 8, kind: .look, name: "look", progressPosition: 1)
 
     static let all: [SetupStep] = [
         welcome,
@@ -17002,7 +17091,8 @@ struct SetupStep: Hashable, Sendable {
         importBrowser,
         review,
         manualSetup,
-        complete
+        complete,
+        look
     ]
 
     static func named(_ name: String?) -> SetupStep? {
